@@ -1,90 +1,61 @@
-package com.example.clientserverrsa;
-
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
-
 import javax.crypto.Cipher;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
-import java.security.KeyPair;
-import java.security.PublicKey;
+import java.io.*;
+import java.net.*;
+import java.security.*;
 import java.util.Base64;
 
-public class Client extends Application {
+public class Client {
+    // server details
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
-    private static KeyPair clientKeyPair;
-    private PublicKey serverPublicKey;
-    private ObjectOutputStream out;
-    private ObjectInputStream in;
-    private TextArea messageArea;
+    private static KeyPair clientKeyPair; // key pair for the client
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    @Override
-    public void start(Stage primaryStage) throws Exception {
+    public static void main(String[] args) throws Exception {
+        // generate a key pair for the client
         clientKeyPair = RSAKeyPairGenerator.generateKeyPair();
 
-        VBox root = new VBox();
-        root.setPadding(new Insets(10));
-        root.setSpacing(10);
-
-        Label label = new Label("Enter message:");
-        TextField messageField = new TextField();
-        Button sendButton = new Button("Send");
-        messageArea = new TextArea();
-        messageArea.setEditable(false);
-        messageArea.setPrefHeight(400);
-
-        root.getChildren().addAll(label, messageField, sendButton, messageArea);
-
-        sendButton.setOnAction(event -> {
-            String message = messageField.getText();
-            if (!message.isEmpty()) {
-                try {
-                    String encryptedMessage = encryptMessage(message, serverPublicKey);
-                    out.writeObject(encryptedMessage);
-                    messageArea.appendText("Sent: " + message + "\n");
-                    messageArea.appendText("Encrypted: " + encryptedMessage + "\n");
-                    messageField.clear();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-
-        Scene scene = new Scene(root, 400, 500);
-        primaryStage.setScene(scene);
-        primaryStage.setTitle("Client");
-        primaryStage.show();
-
-        connectToServer();
-    }
-
-    private void connectToServer() throws Exception {
+        // establish a socket connection to the server
         Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
-        out = new ObjectOutputStream(socket.getOutputStream());
-        in = new ObjectInputStream(socket.getInputStream());
 
-        // Exchange public keys
-        serverPublicKey = (PublicKey) in.readObject();
-        out.writeObject(clientKeyPair.getPublic());
-        messageArea.appendText("Connected to server. Public key exchange complete.\n");
+        // create output and input streams for communication
+        ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+        ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+
+        // exchange public keys with the server
+        PublicKey serverPublicKey = (PublicKey) in.readObject(); // Read server's public key
+        out.writeObject(clientKeyPair.getPublic()); // Send client's public key to the server
+        System.out.println("Public key exchange complete. You can now send secure messages.");
+
+        // BufferedReader - reads messages from the console
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        // continuously read messages from the console and send them to the server
+        while (true) {
+            System.out.print("Enter message: ");
+            String message = reader.readLine(); // read message - console
+            String encryptedMessage = encryptMessage(message, serverPublicKey); // encrypt the message
+            out.writeObject(encryptedMessage); // send the encrypted message to the server
+            System.out.println("Encrypted message sent to server: " + encryptedMessage);
+        }
     }
 
-    private String encryptMessage(String message, PublicKey publicKey) throws Exception {
+    /**
+     * Encrypts a message using the given public key.
+     *
+     * message the message to be encrypted
+     * @param publicKey the public key used for encryption
+     * @return the encrypted message as a Base64 encoded string
+     * @throws Exception if any cryptographic operation fails
+     */
+    private static String encryptMessage(String message, PublicKey publicKey) throws Exception {
+
+        // get a Cipher instance for RSA encryption
         Cipher cipher = Cipher.getInstance("RSA");
+
+        // initialize the cipher in encryption mode with the public key
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        // encrypt the message and encode it in Base64
         byte[] bytes = cipher.doFinal(message.getBytes());
         return Base64.getEncoder().encodeToString(bytes);
     }
