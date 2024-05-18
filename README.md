@@ -7,19 +7,19 @@
 - Send and receive messages
 
 # Description of the Program
-## Siguria-e-te-dhenave-Detyra-3.iml
+### Siguria-e-te-dhenave-Detyra-3.iml
 Specifies module settings and source folder URLs
-## misc.xml:
+### misc.xml:
 Defines project version, JDK settings, and output directory.
-## modules.xml:
+### modules.xml:
 Specifies module file URL and path within the project.
-## vcs.xml:
+### vcs.xml:
 Maps the project's root directory to Git for version control.
-## RSAKeyPairGenerator.java
+### RSAKeyPairGenerator.java
 This Java class RSAKeyPairGenerator provides a method generateKeyPair() to create an RSA key pair of length 1024 bits using a secure random number generator.
-## Server.java
+### Server.java
 This Java code defines a server that uses RSA encryption to securely exchange messages with clients over a network. It listens for incoming connections on port 12345 and handles them in a multi-threaded manner. The server generates its RSA key pair and sends its public key to clients for secure communication. Each client connection is handled by a separate thread (ClientHandler) that receives and decrypts messages from clients using the server's private key. The server sends its public key to clients and receives their public keys for secure communication.
-## Client.java
+### Client.java
 The Client class is part of a client-server system that uses RSA encryption for secure communication. Here's a more detailed explanation of its functionality: 
 The client generates its RSA key pair using the RSAKeyPairGenerator class.
 Upon establishing the connection, the client receives the server's public key from the server via an ObjectInputStream.
