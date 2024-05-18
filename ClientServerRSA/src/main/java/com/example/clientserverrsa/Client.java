@@ -39,13 +39,12 @@ public class Client {
         }
     }
 
-    /**
+    /*
      * Encrypts a message using the given public key.
-     *
-     * message the message to be encrypted
-     * @param publicKey the public key used for encryption
-     * @return the encrypted message as a Base64 encoded string
-     * @throws Exception if any cryptographic operation fails
+     * message -  the message to be encrypted
+     * publicKey - the public key used for encryption
+     * returns the encrypted message as a Base64 encoded string
+     * throws Exception if any cryptographic operation fails
      */
     private static String encryptMessage(String message, PublicKey publicKey) throws Exception {
 
