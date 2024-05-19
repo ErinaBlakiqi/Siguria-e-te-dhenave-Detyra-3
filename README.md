@@ -29,8 +29,10 @@ In a client-server model for encrypted messaging, RSA can be used as follows:
 - After sending the encrypted message, the client outputs a confirmation message to the console, indicating that the message has been successfully encrypted and sent to the server.
 
 ## Execution Examples
-### Server:
-### Client:
+### Server: <img width="415" alt="image" src="https://github.com/ErinaBlakiqi/Siguria-e-te-dhenave-Detyra-3/assets/95575593/2692b954-470d-4c28-84e4-71fa611dfce9">
+
+### Client: <img width="454" alt="image" src="https://github.com/ErinaBlakiqi/Siguria-e-te-dhenave-Detyra-3/assets/95575593/23c230ca-c907-4881-9bac-4eb82de708ea">
+
 
 
 
