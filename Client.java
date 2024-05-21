@@ -1,61 +1,121 @@
-import javax.crypto.Cipher;
 import java.io.*;
 import java.net.*;
 import java.security.*;
+import javax.crypto.*;
 import java.util.Base64;
 
 public class Client {
-    // server details
-    private static final String SERVER_ADDRESS = "localhost";
-    private static final int SERVER_PORT = 12345;
-    private static KeyPair clientKeyPair; // key pair for the client
+    private Socket socket;
+    private PublicKey serverPublicKey;
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
+    private DataInputStream input;
+    private DataOutputStream output;
 
-    public static void main(String[] args) throws Exception {
-        // generate a key pair for the client
-        clientKeyPair = RSAKeyPairGenerator.generateKeyPair();
+    public Client(String serverAddress, int serverPort) {
+        try {
+            socket = new Socket(serverAddress, serverPort);
+            System.out.println("Connected to server. Exchanging public keys...");
+            exchangePublicKeys();
 
-        // establish a socket connection to the server
-        Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+            input = new DataInputStream(socket.getInputStream());
+            output = new DataOutputStream(socket.getOutputStream());
 
-        // create output and input streams for communication
-        ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-        ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+            new Thread(new ServerListener()).start();
 
-        // exchange public keys with the server
-        PublicKey serverPublicKey = (PublicKey) in.readObject(); // Read server's public key
-        out.writeObject(clientKeyPair.getPublic()); // Send client's public key to the server
-        System.out.println("Public key exchange complete. You can now send secure messages.");
-
-        // BufferedReader - reads messages from the console
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-
-        // continuously read messages from the console and send them to the server
-        while (true) {
-            System.out.print("Enter message: ");
-            String message = reader.readLine(); // read message - console
-            String encryptedMessage = encryptMessage(message, serverPublicKey); // encrypt the message
-            out.writeObject(encryptedMessage); // send the encrypted message to the server
-            System.out.println("Encrypted message sent to server: " + encryptedMessage);
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+            String command;
+            while (true) {
+                System.out.print("Enter command: ");
+                command = consoleReader.readLine();
+                processCommand(command);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    /*
-     * Encrypts a message using the given public key.
-     * message -  the message to be encrypted
-     * publicKey - the public key used for encryption
-     * returns the encrypted message as a Base64 encoded string
-     * throws Exception if any cryptographic operation fails
-     */
-    private static String encryptMessage(String message, PublicKey publicKey) throws Exception {
+    private void exchangePublicKeys() throws Exception {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+        keyPairGenerator.initialize(2048);
+        KeyPair keyPair = keyPairGenerator.generateKeyPair();
+        privateKey = keyPair.getPrivate();
+        publicKey = keyPair.getPublic();
 
-        // get a Cipher instance for RSA encryption
+        // Receive server's public key
+        ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+        serverPublicKey = (PublicKey) in.readObject();
+
+        // Send client's public key to the server
+        ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+        out.writeObject(publicKey);
+
+        System.out.println("Public key exchange complete. You can now send secure messages.");
+    }
+
+    private void processCommand(String command) {
+        try {
+            if (command.equalsIgnoreCase("exit")) {
+                socket.close();
+                System.exit(0);
+            } else if (command.equalsIgnoreCase("viewkeys")) {
+                System.out.println("Client Public Key: " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+            } else if (command.startsWith("send ")) {
+                String message = command.substring(5);
+                sendMessage(message);
+            } else if (command.equalsIgnoreCase("help")) {
+                displayHelp();
+            } else {
+                System.out.println("Unknown command. Type 'help' to see available commands.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendMessage(String message) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
+        byte[] encryptedBytes = cipher.doFinal(message.getBytes());
+        String encryptedMessage = Base64.getEncoder().encodeToString(encryptedBytes);
+        System.out.println("Encrypted message sent to server: " + encryptedMessage);
+        output.writeUTF(encryptedMessage);
+        output.flush();
+    }
 
-        // initialize the cipher in encryption mode with the public key
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+    private void displayHelp() {
+        System.out.println("Available commands:");
+        System.out.println("  exit       - Close the connection and exit the client.");
+        System.out.println("  viewkeys   - Display the client's public key.");
+        System.out.println("  send <msg> - Send an encrypted message to the server.");
+        System.out.println("  help       - Display this help message.");
+    }
 
-        // encrypt the message and encode it in Base64
-        byte[] bytes = cipher.doFinal(message.getBytes());
-        return Base64.getEncoder().encodeToString(bytes);
+    private class ServerListener implements Runnable {
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    String encryptedMessage = input.readUTF();
+                    String decryptedMessage = decryptMessage(encryptedMessage);
+                    System.out.println("Received message from server: " + decryptedMessage);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private String decryptMessage(String encryptedMessage) throws Exception {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage));
+            return new String(decryptedBytes);
+        }
+    }
+
+    public static void main(String[] args) {
+        String serverAddress = "localhost"; // Change this to server's address
+        int serverPort = 1234; // Change this to server's port number
+        new Client(serverAddress, serverPort);
     }
 }
